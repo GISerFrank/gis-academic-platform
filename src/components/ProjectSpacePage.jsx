@@ -1,5 +1,5 @@
 import {
-    LayoutDashboard, FileText, StickyNote, GitBranch, Settings, GripVertical, Plus, ChevronLeft,
+    LayoutDashboard, FileText, StickyNote, GitBranch, Settings, Plus, ChevronLeft,
     Upload, Download, Edit, Trash2, Search, File as FileIcon, FileUp, Image as ImageIcon
 } from 'lucide-react';
 import {useState} from "react";

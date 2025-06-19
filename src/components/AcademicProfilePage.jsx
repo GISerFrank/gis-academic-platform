@@ -1,7 +1,7 @@
 // 在您的主文件顶部，确保这些图标已导入
 import {
     ChevronLeft, Mail, Rss, UserPlus, Linkedin, Twitter,
-    FileText, Users, Award, Network, GitCommitHorizontal, Briefcase } from 'lucide-react';
+    FileText, Briefcase } from 'lucide-react';
 import {useState} from "react";
 
 const AcademicProfilePage = ({ profileData, onBack, onEnterProject }) => {
