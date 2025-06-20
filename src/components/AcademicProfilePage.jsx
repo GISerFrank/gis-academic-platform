@@ -2,7 +2,8 @@
 import {
     ChevronLeft, Mail, Rss, UserPlus, Linkedin, Twitter,
     FileText, Briefcase } from 'lucide-react';
-import {useState} from "react";
+import {useMemo, useState} from "react";
+import CollaborationGraph from "./CollaborationGraph";
 
 const AcademicProfilePage = ({ profileData, onBack, onEnterProject }) => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -29,6 +30,32 @@ const AcademicProfilePage = ({ profileData, onBack, onEnterProject }) => {
             <p className="text-xs text-gray-400 mt-2">(这是一个用于演示的静态图表)</p>
         </div>
     );
+
+    // 2. 将我们的模拟数据转换为 React Flow 需要的格式
+    // 我们使用 useMemo 来避免不必要的重复计算
+    const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
+        if (!profileData.collaborationGraph) return { nodes: [], edges: [] };
+
+        const { nodes, links } = profileData.collaborationGraph;
+
+        const transformedNodes = nodes.map(node => ({
+            id: node.id,
+            position: { x: node.x, y: node.y }, // React Flow 需要 position 对象
+            data: { label: node.name, avatar: node.avatar }, // 将自定义数据放入 data 字段
+            type: 'collaboratorNode', // 指定使用我们的自定义节点类型
+            draggable: !node.isCenter, // 中心节点不可拖拽
+        }));
+
+        const transformedEdges = links.map((link, i) => ({
+            id: `e-${link.source}-${link.target}-${i}`,
+            source: link.source,
+            target: link.target,
+            animated: link.strength > 3, // 合作紧密的连线显示动画
+            style: { strokeWidth: 0.5 + link.strength, stroke: '#6b7280' },
+        }));
+
+        return { nodes: transformedNodes, edges: transformedEdges };
+    }, [profileData.collaborationGraph]);
 
     return (
         <div className="max-w-7xl mx-auto">
@@ -82,9 +109,9 @@ const AcademicProfilePage = ({ profileData, onBack, onEnterProject }) => {
                     <button onClick={() => setActiveTab('overview')} className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>总览</button>
                     <button onClick={() => setActiveTab('publications')} className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'publications' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>研究成果 ({profileData.publications.length})</button>
                     {/* === 1. 新增的“科研项目”标签页 === */}
-                    <button onClick={() => setActiveTab('projects')} className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'projects' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                        科研项目 ({profileData.projects.length})
-                    </button>
+                    {/*<button onClick={() => setActiveTab('projects')} className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'projects' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>*/}
+                    {/*    科研项目 ({profileData.projects.length})*/}
+                    {/*</button>*/}
                     <button onClick={() => setActiveTab('timeline')} className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'timeline' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>学术时间线</button>
                 </div>
             </div>
@@ -98,27 +125,21 @@ const AcademicProfilePage = ({ profileData, onBack, onEnterProject }) => {
                                 <h3 className="text-lg font-semibold mb-2">研究方向</h3>
                                 <div className="flex flex-wrap gap-2">
                                     {profileData.userInfo.researchInterests.map(interest => (
-                                        <span key={interest} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">{interest}</span>
+                                        <span key={interest}
+                                              className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">{interest}</span>
                                     ))}
                                 </div>
                             </div>
                             <div>
                                 <h3 className="text-lg font-semibold mb-2">影响力分析</h3>
-                                <MockGraph title="论文引用网络" />
+                                <MockGraph title="论文引用网络"/>
                             </div>
                         </div>
-                        <div>
+                        <div className="lg:col-span-1 space-y-3">
                             <h3 className="text-lg font-semibold mb-2">合作网络</h3>
-                            <div className="space-y-3">
-                                {profileData.collaborationNetwork.map(co => (
-                                    <div key={co.name} className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-xl">{co.avatar}</div>
-                                        <div>
-                                            <p className="font-medium text-gray-900">{co.name}</p>
-                                            <p className="text-sm text-gray-500">{co.affiliation}</p>
-                                        </div>
-                                    </div>
-                                ))}
+                            {/* 3. 用新的Graph组件替换掉旧的SVG实现 */}
+                            <div className="w-full h-96 bg-gray-50 rounded-lg border">
+                                <CollaborationGraph nodes={flowNodes} edges={flowEdges}/>
                             </div>
                         </div>
                     </div>
@@ -159,33 +180,33 @@ const AcademicProfilePage = ({ profileData, onBack, onEnterProject }) => {
                     </div>
                 )}
                 {/* === 2. “科研项目”标签页的UI实现 === */}
-                {activeTab === 'projects' && (
-                    <div className="space-y-6">
-                        {profileData.projects.map(project => (
-                            <div key={project.id} className="p-5 border rounded-lg flex flex-col md:flex-row md:items-center md:justify-between hover:bg-gray-50 transition-colors">
-                                <div className="flex-grow mb-4 md:mb-0">
-                                    <h4 className="text-lg font-semibold text-gray-800">{project.title}</h4>
-                                    <div className="flex items-center space-x-4 my-2 text-sm">
-                                        <span className={`px-2 py-1 text-xs rounded-full ${
-                                            project.status === '进行中' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                                        }`}>{project.status}</span>
-                                        <span className="text-gray-600">我的角色: <span className="font-medium">{project.role}</span></span>
-                                    </div>
-                                    <p className="text-sm text-gray-600 mt-1">{project.description}</p>
-                                </div>
-                                <div className="flex-shrink-0">
-                                    <button
-                                        onClick={() => onEnterProject(project)}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-5 rounded-lg flex items-center space-x-2 transition-colors"
-                                    >
-                                        <Briefcase className="w-4 h-4"/>
-                                        <span>进入项目空间</span>
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    )}
+                {/*{activeTab === 'projects' && (*/}
+                {/*    <div className="space-y-6">*/}
+                {/*        {profileData.projects.map(project => (*/}
+                {/*            <div key={project.id} className="p-5 border rounded-lg flex flex-col md:flex-row md:items-center md:justify-between hover:bg-gray-50 transition-colors">*/}
+                {/*                <div className="flex-grow mb-4 md:mb-0">*/}
+                {/*                    <h4 className="text-lg font-semibold text-gray-800">{project.title}</h4>*/}
+                {/*                    <div className="flex items-center space-x-4 my-2 text-sm">*/}
+                {/*                        <span className={`px-2 py-1 text-xs rounded-full ${*/}
+                {/*                            project.status === '进行中' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'*/}
+                {/*                        }`}>{project.status}</span>*/}
+                {/*                        <span className="text-gray-600">我的角色: <span className="font-medium">{project.role}</span></span>*/}
+                {/*                    </div>*/}
+                {/*                    <p className="text-sm text-gray-600 mt-1">{project.description}</p>*/}
+                {/*                </div>*/}
+                {/*                <div className="flex-shrink-0">*/}
+                {/*                    <button*/}
+                {/*                        onClick={() => onEnterProject(project)}*/}
+                {/*                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-5 rounded-lg flex items-center space-x-2 transition-colors"*/}
+                {/*                    >*/}
+                {/*                        <Briefcase className="w-4 h-4"/>*/}
+                {/*                        <span>进入项目空间</span>*/}
+                {/*                    </button>*/}
+                {/*                </div>*/}
+                {/*            </div>*/}
+                {/*        ))}*/}
+                {/*    </div>*/}
+                {/*    )}*/}
             </div>
         </div>
     );

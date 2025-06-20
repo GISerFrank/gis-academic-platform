@@ -3,10 +3,11 @@ import {
     Search, MessageCircle, Users, BookOpen, Award, Bell, Plus, Heart,
     Share2, Eye, Download, Upload, Calendar, MapPin, Globe, TrendingUp,
     Star, Filter, UserPlus, MessageSquare, Database, // <-- Added missing Database icon
-    BrainCircuit, Lightbulb, GitBranchPlus // <-- 1. 添加新图标
+    BrainCircuit, Lightbulb, GitBranchPlus, Briefcase // <-- 1. 添加新图标
 } from 'lucide-react';
 import AcademicProfilePage from "./AcademicProfilePage";
 import ProjectSpacePage from "./ProjectSpacePage";
+import ProjectDashboardPage from "./ProjectDashboardPage";
 
 // --- Sub-components are now defined outside the main component for performance ---
 
@@ -578,7 +579,7 @@ const GISAcademicPlatform = () => {
     const [selectedFilter, setSelectedFilter] = useState('all');
 
     // 1. 新增state来控制页面切换
-    const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard' or 'profile'
+    const [currentPage, setCurrentPage] = useState('dashboard');
     const [activeProject, setActiveProject] = useState(null); // 存储当前正在查看的项目
 
 
@@ -596,11 +597,25 @@ const GISAcademicPlatform = () => {
             { date: '2022-05-10', title: '获得国家科技进步奖', description: '因在城市气候研究中的突出贡献荣获二等奖。' },
             { date: '2020-09-01', title: '成立智慧城市实验室', description: '领导成立了专注于城市计算与GIS交叉学科的实验室。' },
         ],
-        collaborationNetwork: [
-            { name: '刘教授', affiliation: '北师大', avatar: '🎯' },
-            { name: '张教授', affiliation: '北京大学', avatar: '👨‍🏫' },
-            { name: '李博士', affiliation: '中科院遥感所', avatar: '👩‍🔬' },
-        ],
+// === 新增1：为可视化设计的图数据结构 ===
+        collaborationGraph: {
+            // "nodes" 代表图中的每个点 (学者)
+            nodes: [
+                { id: 'center', name: '陈院士', avatar: '🏆', isCenter: true, x: 250, y: 150 },
+                { id: 'user2', name: '刘教授', avatar: '🎯', x: 100, y: 50 },
+                { id: 'user3', name: '张教授', avatar: '👨‍🏫', x: 400, y: 50 },
+                { id: 'user4', name: '李博士', avatar: '👩‍🔬', x: 80, y: 250 },
+                { id: 'user5', name: '王研究生', avatar: '🎓', x: 420, y: 250 },
+            ],
+            // "links" 代表点与点之间的连线 (合作关系)
+            links: [
+                { source: 'center', target: 'user2', strength: 5 }, // strength 越大，线越粗
+                { source: 'center', target: 'user3', strength: 4 },
+                { source: 'center', target: 'user4', strength: 5 },
+                { source: 'center', target: 'user5', strength: 2 },
+                { source: 'user2', target: 'user4', strength: 3 }, // 学者之间也可能有合作
+            ]
+        },
         // === 3. 新增的项目数据 ===
         projects: [
             {
@@ -682,8 +697,24 @@ const GISAcademicPlatform = () => {
         { id: 'experts', name: '专家学者', icon: Award },
         { id: 'conferences', name: '会议信息', icon: Calendar },
         { id: 'discussions', name: '学术讨论', icon: MessageCircle },
-        { id: 'datasets', name: '开源数据库', icon: Database }
+        { id: 'datasets', name: '开源数据库', icon: Database },
+        // === 新增的顶级入口 ===
+        { id: 'projects', name: '协作空间', icon: Briefcase },
     ];
+
+    // 4. 更新导航按钮的点击逻辑
+    const handleNavClick = (tabId) => {
+        // 第一步：无论点击哪个，都立刻更新 activeTab 的状态
+        setActiveTab(tabId);
+
+        // 第二步：根据 tabId 决定要跳转到哪个页面
+        if (tabId === 'projects') {
+            setCurrentPage('projectDashboard');
+        } else {
+            // 其他所有tab都链接到主仪表盘
+            setCurrentPage('dashboard');
+        }
+    };
 
     // 2. 新增用于导航的函数
     const handleEnterProject = (projectFromProfile) => {
@@ -722,76 +753,52 @@ const GISAcademicPlatform = () => {
     };
 
     const handleExitProfile = () => {
-        setCurrentPage('dashboard');
+        if (activeTab === 'projects') {
+            setCurrentPage('projectDashboard');
+        }
+        else {
+            setCurrentPage('dashboard');
+        }
     }
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center space-x-4">
-                            <div className="bg-gradient-to-r from-blue-500 to-green-500 w-10 h-10 rounded-lg flex items-center justify-center">
-                                <Globe className="w-6 h-6 text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-bold text-gray-900">GIS学术社区</h1>
-                                <p className="text-sm text-gray-500">连接全球GIS研究者</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center space-x-4">
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="搜索研究者、论文、会议..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                            </div>
-
-                            <button className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                                <Bell className="w-5 h-5" />
-                                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-                            </button>
-
-                            {/* 修改头像，添加点击事件 */}
-                            <button onClick={handleViewProfile} className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white cursor-pointer">
-                                👤
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            {currentPage === 'dashboard' && (
-                <>
-            {/* Navigation */}
-            <nav className="bg-white shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex space-x-8">
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-  activeTab === tab.id
-      ? 'border-blue-500 text-blue-600'
-      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-}`}
-                            >
-                                <tab.icon className="w-4 h-4" />
-                                <span>{tab.name}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </nav>
-
-            {/* Main Content */}
+    const renderPageContent = () => {
+        switch (currentPage) {
+            case 'profile':
+                return (
+                    <main className="py-8 px-4">
+                        <AcademicProfilePage
+                            profileData={mockProfileData}
+                            onBack={() => handleExitProfile()} // 从个人主页可以返回主仪表盘
+                            onEnterProject={handleEnterProject}
+                        />
+                    </main>
+                );
+            case 'projectDashboard':
+                return (
+                    <main className="py-8 px-4">
+                        <ProjectDashboardPage
+                            projects={mockProfileData.projects}
+                            onEnterProject={handleEnterProject}
+                        />
+                    </main>
+                );
+            case 'projectSpace':
+                // 项目空间是全屏的，它会替换掉所有内容，所以它的渲染逻辑是特殊的
+                return (
+                    <ProjectSpacePage
+                        project={activeProject}
+                        onExit={() => setCurrentPage('profile')} // 从项目空间返回到个人主页
+                    />
+                );
+            case 'accountSettings':
+                return (
+                    <main className="py-8 px-4">
+                        <AcademicProfilePage onBack={() => setCurrentPage('profile')} />
+                    </main>
+                );
+            case 'dashboard':
+            default:
+                return (
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Main Content Area */}
@@ -882,23 +889,73 @@ const GISAcademicPlatform = () => {
                     </aside>
                 </div>
             </main>
-                </>
-                )}
-            {currentPage === 'profile' && (
-                <main className="py-8 px-4">
-                    <AcademicProfilePage
-                        profileData={mockProfileData}
-                        onBack={handleExitProfile}
-                        onEnterProject={handleEnterProject} // 新增prop
-                    />
-                </main>
-            )}
-            {currentPage === 'projectSpace' && activeProject && (
-                <ProjectSpacePage
-                    project={activeProject}
-                    onExit={handleExitProject}
-                />
-            )}
+            )
+    }
+}
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="bg-white shadow-sm border-b sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center h-16">
+                        <div className="flex items-center space-x-4">
+                            <div className="bg-gradient-to-r from-blue-500 to-green-500 w-10 h-10 rounded-lg flex items-center justify-center">
+                                <Globe className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-gray-900">GIS学术社区</h1>
+                                <p className="text-sm text-gray-500">连接全球GIS研究者</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center space-x-4">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="搜索研究者、论文、会议..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                            </div>
+
+                            <button className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                                <Bell className="w-5 h-5" />
+                                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                            </button>
+
+                            {/* 修改头像，添加点击事件 */}
+                            <button onClick={handleViewProfile} className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white cursor-pointer">
+                                👤
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            {/* Navigation */}
+            <nav className="bg-white shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex space-x-8">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => handleNavClick(tab.id)}
+                                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+  activeTab === tab.id
+      ? 'border-blue-500 text-blue-600'
+      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+}`}
+                            >
+                                <tab.icon className="w-4 h-4" />
+                                <span>{tab.name}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </nav>
+            {renderPageContent()}
         </div>
     );
 };
